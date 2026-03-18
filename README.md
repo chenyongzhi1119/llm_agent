@@ -1,153 +1,265 @@
 # Multi-Tool ReAct Agent
 
-A multi-tool intelligent Agent built with **LangGraph + hand-written ReAct loop**, powered by local Qwen model via LM Studio. Supports tool invocation, multi-turn conversation, and provides both CLI and Web UI interfaces.
+A production-ready AI agent built with hand-written ReAct loop + LangGraph, powered by local Qwen model via LM Studio.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
-│                Web UI (Gradio)              │
+│              Gradio Web UI (:7860)           │
 ├─────────────────────────────────────────────┤
-│              FastAPI Backend                │
+│           FastAPI Backend (:8000)            │
+│         SSE streaming responses              │
 ├─────────────────────────────────────────────┤
-│         ReAct Agent Core (LangGraph)        │
-│  ┌──────────┐ ┌───────────┐ ┌───────────┐  │
-│  │ Reasoning │ │Tool Router│ │  Memory   │  │
-│  └──────────┘ └───────────┘ └───────────┘  │
+│        ReAct Agent Core (LangGraph)          │
+│  ┌──────────┐ ┌──────────┐ ┌─────────────┐ │
+│  │Hand-write│ │LangGraph │ │   Memory    │ │
+│  │ReAct loop│ │state graph│ │short+long   │ │
+│  └──────────┘ └──────────┘ └─────────────┘ │
 ├─────────────────────────────────────────────┤
-│               Tools Layer                   │
-│  YouTube Summary · Study Tutor · Web Search │
-│  Code Executor  · Weather     · File R/W   │
+│                 Tool Layer                   │
+│  calculator  web_search  code_executor       │
+│  weather     file_read   file_write          │
+│  youtube_summary         study_tutor         │
 ├─────────────────────────────────────────────┤
-│          Local LLM (Qwen via LM Studio)     │
+│         Local LLM (Qwen via LM Studio)       │
 └─────────────────────────────────────────────┘
 ```
 
-## Features
+## Quick Start
 
-- **Dual ReAct Implementation** — both a hand-written ReAct loop and a LangGraph state graph version, switchable at runtime
-- **Dynamic Tool Registry** — unified tool interface with auto-registration; easily extensible
-- **Local LLM** — runs Qwen2.5 locally via LM Studio (OpenAI-compatible API), no cloud dependency
-- **Streaming Output** — SSE-based real-time streaming of the agent's reasoning chain (Thought → Action → Observation)
-- **Multi-turn Memory** — short-term sliding window + long-term SQLite persistence
+**Prerequisites:** LM Studio running with Qwen model loaded on `localhost:1234`
+
+```powershell
+# Terminal 1 - Backend
+& "C:\Program Files\Python311\python.exe" server.py
+
+# Terminal 2 - UI
+& "C:\Program Files\Python311\python.exe" src/ui/gradio_app.py
+```
+
+Open `http://localhost:7860` in your browser.
 
 ## Tech Stack
 
-| Component | Choice |
-|-----------|--------|
-| LLM | Qwen2.5 (local, via LM Studio) |
-| Agent Framework | LangGraph + hand-written ReAct |
-| Backend | FastAPI + SSE |
+| Layer | Technology |
+|-------|-----------|
+| LLM | Qwen (LM Studio local, OpenAI-compatible API) |
+| Agent | Hand-written ReAct + LangGraph state graph |
+| Backend | FastAPI + SSE streaming |
 | Frontend | Gradio |
-| Tool Management | Custom Tool Registry |
-| Storage | SQLite |
+| Memory | Short-term (sliding window) + Long-term (SQLite) |
+| Tools | yt-dlp, DuckDuckGo, subprocess sandbox, wttr.in, httpx |
 
-## Prerequisites
+## Tools
 
-- **Python** >= 3.11
-- **LM Studio** — download from [lmstudio.ai](https://lmstudio.ai), load a Qwen2.5 model, and start the local server (default: `http://localhost:1234/v1`)
-
-## Quick Start
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/chenyongzhi1119/llm_agent.git
-cd llm_agent
-```
-
-### 2. Create a virtual environment
-
-```bash
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# macOS / Linux
-source venv/bin/activate
-```
-
-### 3. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Start LM Studio
-
-1. Open LM Studio and download a Qwen2.5 model (e.g. `qwen2.5-7b-instruct`)
-2. Go to the **Local Server** tab and click **Start Server**
-3. The server runs at `http://localhost:1234/v1` by default
-
-### 5. Run the agent
-
-```bash
-python main.py
-```
-
-Type your question in the CLI. Type `graph` to switch between hand-written ReAct and LangGraph mode, or `quit` to exit.
+| Tool | Description |
+|------|-------------|
+| `calculator` | Evaluate math expressions safely |
+| `web_search` | DuckDuckGo search, no API key needed |
+| `code_executor` | Sandboxed Python execution with timeout |
+| `weather` | Real-time weather via wttr.in |
+| `file_read` | Read files from data/ directory |
+| `file_write` | Write files to data/ directory |
+| `youtube_summary` | Extract subtitles and summarize YouTube videos |
+| `study_tutor` | Explain topics, generate quizzes, grade answers |
 
 ## Configuration
 
-Edit `config/settings.py` to customize:
+Edit `config/settings.py`:
 
 ```python
-LLM_BASE_URL = "http://localhost:1234/v1"  # LM Studio server URL
-LLM_MODEL = "qwen2.5"                      # Model name
-MAX_REACT_STEPS = 10                        # Max reasoning steps
-MAX_CONTEXT_MESSAGES = 20                   # Conversation history window
-```
-
-## Project Structure
-
-```
-llm_agent/
-├── main.py                 # Entry point (CLI)
-├── config/
-│   └── settings.py         # Configuration
-├── src/
-│   ├── agent/
-│   │   ├── react.py        # Hand-written ReAct core logic
-│   │   ├── graph.py        # LangGraph state graph
-│   │   ├── prompt.py       # Prompt templates
-│   │   └── parser.py       # Output parser
-│   ├── tools/
-│   │   ├── base.py         # Tool base class + Registry
-│   │   └── calculator.py   # Calculator tool (example)
-│   ├── memory/             # Short-term & long-term memory
-│   ├── api/                # FastAPI backend
-│   └── ui/                 # Gradio frontend
-├── tests/
-├── data/
-└── logs/
+LLM_BASE_URL = "http://localhost:1234/v1"  # LM Studio URL
+LLM_MODEL    = "qwen2.5"                   # model name as shown in LM Studio
+MAX_REACT_STEPS     = 10                   # max reasoning iterations
+MAX_CONTEXT_MESSAGES = 20                  # sliding window size
 ```
 
 ## Extending Tools
-
-Create a new tool by subclassing `Tool`:
 
 ```python
 from src.tools.base import Tool
 
 class MyTool(Tool):
     name = "my_tool"
-    description = "Description of what this tool does"
+    description = "One-line description for the LLM"
     parameters = {
-        "query": {"description": "Input query", "required": True},
+        "query": {"description": "input text", "required": True},
     }
 
     def execute(self, **kwargs) -> str:
-        query = kwargs["query"]
-        return f"Result for: {query}"
+        return f"result for {kwargs['query']}"
 ```
 
-Register it in `main.py`:
+Register in `server.py` / `main.py`:
+```python
+registry.register(MyTool())
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/chat` | SSE streaming chat |
+| GET | `/api/tools` | List registered tools |
+| GET | `/api/history?session_id=x` | Get conversation history |
+| DELETE | `/api/history?session_id=x` | Clear history |
+| GET | `/api/sessions` | List all sessions |
+| GET | `/docs` | Swagger UI |
+
+---
+
+## Optimizations
+
+### 1. System Prompt Token Compression (−42%)
+
+The initial system prompt + 8 tool descriptions totalled ~703 tokens. On CPU-only inference every token adds latency, and LM Studio logs showed 2392 tokens per request.
+
+Rewrote all tool descriptions to be maximally concise:
 
 ```python
-from src.tools.my_tool import MyTool
+# Before — 703 tokens total
+description = "Search the web using DuckDuckGo. Returns top results with title, URL, and snippet."
+parameters  = {"query": {"description": "The search query string", "required": True}, ...}
 
-registry.register(MyTool())
+# After — 407 tokens total (−42%)
+description = "Search the web via DuckDuckGo. Returns titles, URLs, snippets."
+parameters  = {"query": {"description": "search query", "required": True}, ...}
+```
+
+Also compressed the ReAct format instructions from a verbose paragraph to a minimal template.
+
+**Result:** avg latency dropped from ~4s to ~1.85s.
+
+### 2. Forced Tool Invocation via Prompt Rules
+
+Qwen would bypass tools by fabricating Observation lines (e.g. inventing weather data or calculating mentally). Added explicit STRICT RULES to the system prompt:
+
+```
+NEVER write an Observation line yourself.
+Observations are ONLY filled by the system after a real tool call.
+NEVER guess or make up numbers, weather, code output, or file content.
+```
+
+**Result:** tool call rate 0% → 100%.
+
+### 3. Parser-Level Hallucination Defense
+
+Added a second layer of protection in `parser.py` that strips any self-written Observation before extracting the Action, forcing the agent back into the correct tool-call path regardless of prompt compliance:
+
+```python
+def _strip_fabricated_observation(text: str) -> str:
+    return re.split(r"\nObservation\s*:", text)[0].strip()
+```
+
+---
+
+## Technical Challenges
+
+### Challenge 1 — LLM Hallucinating Tool Results
+
+**Problem:** Qwen in ReAct format fabricated `Observation` lines instead of calling tools. Given "What is the weather in Tokyo?", it would write `Observation: The weather is 22°C sunny` without invoking the weather tool.
+
+**Root cause:** During training the model learned the ReAct pattern (Action → Observation), so it tries to "complete the sequence" by generating a plausible Observation.
+
+**Solution:** Two-layer fix — strict prompt rules (see above) + parser-level stripping. Verified by checking that SSE responses contain an `action` event before any `observation` event.
+
+---
+
+### Challenge 2 — Stale Process Holding Port After Code Update
+
+**Problem:** After updating `prompt.py`, the running FastAPI server kept using the old in-memory code. Restarting appeared to work (new process started) but the old process still held port 8000, so the new process silently exited. The server continued serving wrong answers from stale code.
+
+**Diagnosis:** LM Studio debug logs showed requests still processing 2392 tokens even after the prompt was compressed to ~407 tokens — clear evidence of stale code.
+
+**Solution:**
+```powershell
+netstat -ano | findstr :8000   # find PID
+taskkill /F /PID <pid>         # hard-kill old process, then restart
+```
+
+---
+
+### Challenge 3 — Third-Party API Breaking Changes
+
+Two dependencies changed APIs silently:
+
+| Library | Change | Fix |
+|---------|--------|-----|
+| `duckduckgo_search` | Renamed to `ddgs` | Graceful fallback import: `try ddgs except ImportError use duckduckgo_search` |
+| `wttr.in` | Response body moved from root to nested `"data"` key | `data = r.json().get("data", r.json())` |
+
+---
+
+### Challenge 4 — Gradio 6.x API Breaking Changes
+
+Three simultaneous breaking changes when upgrading to Gradio 6:
+
+| Parameter | Old (v5) | New (v6) |
+|-----------|----------|----------|
+| `theme` | `gr.Blocks(theme=...)` | `launch(theme=...)` |
+| Copy button | `Chatbot(show_copy_button=True)` | `Chatbot(buttons=["copy"])` |
+| Message type | `Chatbot(type="messages")` | parameter removed; dict format is default |
+| History format | `[[user, assistant], ...]` | `[{"role": "user", "content": ...}, ...]` |
+
+---
+
+### Challenge 5 — Python Multi-Installation Conflict (Windows)
+
+**Problem:** `python` resolved to msys64 Python 3.12 (no pip), but all dependencies were installed to `C:\Program Files\Python311`. Running `python main.py` raised `ModuleNotFoundError`.
+
+**Solution:** Always use the explicit path `"C:\Program Files\Python311\python.exe"` in all commands.
+
+---
+
+## Performance
+
+Measured on CPU-only machine (no GPU), Qwen model via LM Studio:
+
+| Metric | Value |
+|--------|-------|
+| Direct answer (no tool) | ~1.2s avg |
+| Tool-call round-trip | ~2.1s avg |
+| Overall average | **1.85s** |
+| Min | 0.45s |
+| Max | 2.92s |
+| UX rating | **Excellent (< 3s)** |
+
+**Further speed improvement:** switch to Q4_K_M quantization in LM Studio — typically 3–5× faster on CPU with minimal quality loss.
+
+## Project Structure
+
+```
+llm_agent/
+├── config/settings.py        # LM Studio URL, model name, limits
+├── src/
+│   ├── agent/
+│   │   ├── react.py          # Hand-written ReAct loop
+│   │   ├── graph.py          # LangGraph state graph
+│   │   ├── prompt.py         # Optimized ReAct system prompt
+│   │   └── parser.py         # Output parser + hallucination defense
+│   ├── tools/
+│   │   ├── base.py           # Tool ABC + ToolRegistry
+│   │   ├── calculator.py
+│   │   ├── web_search.py
+│   │   ├── code_executor.py  # Sandboxed subprocess execution
+│   │   ├── weather.py
+│   │   ├── file_rw.py
+│   │   ├── youtube_summary.py
+│   │   └── study_tutor.py
+│   ├── memory/
+│   │   ├── short_term.py     # Sliding window context manager
+│   │   └── long_term.py      # SQLite persistence
+│   ├── api/
+│   │   ├── app.py            # FastAPI app factory
+│   │   ├── routes.py         # Endpoints + SSE streaming
+│   │   └── schemas.py        # Pydantic models
+│   └── ui/
+│       └── gradio_app.py     # Gradio chat interface
+├── tests/
+│   └── test_performance.py   # Latency benchmarks
+├── main.py                   # CLI entry point
+└── server.py                 # FastAPI server entry point
 ```
 
 ## License
