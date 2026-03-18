@@ -5,25 +5,25 @@ A production-ready AI agent built with hand-written ReAct loop + LangGraph, powe
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│              Gradio Web UI (:7860)           │
-├─────────────────────────────────────────────┤
-│           FastAPI Backend (:8000)            │
-│         SSE streaming responses              │
-├─────────────────────────────────────────────┤
-│        ReAct Agent Core (LangGraph)          │
-│  ┌──────────┐ ┌──────────┐ ┌─────────────┐ │
-│  │Hand-write│ │LangGraph │ │   Memory    │ │
-│  │ReAct loop│ │state graph│ │short+long   │ │
-│  └──────────┘ └──────────┘ └─────────────┘ │
-├─────────────────────────────────────────────┤
-│                 Tool Layer                   │
-│  calculator  web_search  code_executor       │
-│  weather     file_read   file_write          │
-│  youtube_summary         study_tutor         │
-├─────────────────────────────────────────────┤
-│         Local LLM (Qwen via LM Studio)       │
-└─────────────────────────────────────────────┘
+┌───────────────────────────────────────────────┐
+│             Gradio Web UI (:7860)             │
+├───────────────────────────────────────────────┤
+│            FastAPI Backend (:8000)            │
+│            SSE streaming responses            │
+├───────────────────────────────────────────────┤
+│         ReAct Agent Core (LangGraph)          │
+│  ┌────────────┐ ┌────────────┐ ┌───────────┐  │
+│  │Hand-written│ │  LangGraph │ │   Memory  │  │
+│  │  ReAct loop│ │ state graph│ │ short+long│  │
+│  └────────────┘ └────────────┘ └───────────┘  │
+├───────────────────────────────────────────────┤
+│                  Tool Layer                   │
+│  calculator    web_search    code_executor    │
+│  weather       file_rw       youtube_summary  │
+│  study_tutor                                  │
+├───────────────────────────────────────────────┤
+│        Local LLM (Qwen via LM Studio)         │
+└───────────────────────────────────────────────┘
 ```
 
 ## Quick Start
